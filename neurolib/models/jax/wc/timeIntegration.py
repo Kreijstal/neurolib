@@ -102,6 +102,8 @@ def timeIntegration_args(params):
 
     # ------------------------------------------------------------------------
 
+    integration_method = params['integration_method']
+
     return (
         startind,
         t,
@@ -134,6 +136,7 @@ def timeIntegration_args(params):
         tau_ou,
         sigma_ou,
         key,
+        integration_method
     )
 
 
@@ -170,6 +173,7 @@ def timeIntegration_elementwise(
     tau_ou,
     sigma_ou,
     key,
+    integration_method
 ):
 
     update_step = get_update_step(
@@ -204,6 +208,7 @@ def timeIntegration_elementwise(
         tau_ou,
         sigma_ou,
         key,
+        integration_method
     )
 
     # Iterating through time steps
@@ -221,7 +226,6 @@ def timeIntegration_elementwise(
         exc_ou,
         inh_ou,
     )
-
 
 def get_update_step(
     startind,
@@ -255,6 +259,7 @@ def get_update_step(
     tau_ou,
     sigma_ou,
     key,
+    integration_method
 ):
     key, subkey_exc = random.split(key)
     noise_exc = random.normal(subkey_exc, (N, len(t)))
@@ -269,7 +274,7 @@ def get_update_step(
     def S_I(x):
         return 1.0 / (1.0 + jnp.exp(-a_inh * (x - mu_inh)))
 
-    def update_step(state, _):
+    def step_rhs(state):
         exc_history, inh_history, exc_ou, inh_ou, i = state
 
         # Vectorized calculation of delayed excitatory input
@@ -307,6 +312,15 @@ def get_update_step(
                 + inh_ou  # ou noise
             )
         )
+
+        exc_ou_rhs = (exc_ou_mean - exc_ou) * dt / tau_ou + sigma_ou * sqrt_dt * noise_exc[:, i - startind]
+        inh_ou_rhs = (inh_ou_mean - inh_ou) * dt / tau_ou + sigma_ou * sqrt_dt * noise_inh[:, i - startind]
+        
+        return exc_rhs, inh_rhs, exc_ou_rhs, inh_ou_rhs
+
+    def euler(state):
+        exc_rhs, inh_rhs, exc_ou_rhs, inh_ou_rhs = step_rhs(state)
+        exc_history, inh_history, exc_ou, inh_ou, i = state
         # Euler integration
         # make sure e and i variables do not exceed 1 (can only happen with noise)
         exc_new = jnp.clip(exc_history[:, -1] + dt * exc_rhs, 0, 1)
@@ -314,11 +328,48 @@ def get_update_step(
 
         # Update Ornstein-Uhlenbeck process for noise
         exc_ou = (
-            exc_ou + (exc_ou_mean - exc_ou) * dt / tau_ou + sigma_ou * sqrt_dt * noise_exc[:, i - startind]
+            exc_ou + exc_ou_rhs
         )  # mV/ms
         inh_ou = (
-            inh_ou + (inh_ou_mean - inh_ou) * dt / tau_ou + sigma_ou * sqrt_dt * noise_inh[:, i - startind]
+            inh_ou + inh_ou_rhs
         )  # mV/ms
+
+        return exc_new, inh_new, exc_ou, inh_ou
+
+    def heun(state):
+        # TODO
+        exc_k1, inh_k1, exc_ou_rhs, inh_ou_rhs = step_rhs(state)
+
+        # Update Ornstein-Uhlenbeck process for noise
+        exc_ou = (
+            exc_ou + exc_ou_rhs
+        )  # mV/ms
+        inh_ou = (
+            inh_ou + inh_ou_rhs
+        )  # mV/ms
+
+        # make sure e and i variables do not exceed 1 (can only happen with noise)
+        exc_new = jnp.clip(exc_history[:, -1] + dt * exc_rhs, 0, 1)
+        inh_new = jnp.clip(inh_history[:, -1] + dt * inh_rhs, 0, 1)
+
+        exc_k1_history = jnp.concatenate((exc_history[:, 1:], jnp.expand_dims(exc_new, axis=1)), axis=1)
+        inh_k1_history = jnp.concatenate((inh_history[:, 1:], jnp.expand_dims(inh_new, axis=1)), axis=1)
+
+        new_state = exc_k1_history, inh_k1_history, exc_ou, inh_ou
+        exc_k2, inh_k2, _, _ = step_rhs(new_state)
+        exc_new = ...
+        inh_new = ...
+        return exc_new, inh_new, exc_ou, inh_ou
+
+    def update_step(state, _):
+        exc_history, inh_history, exc_ou, inh_ou, i = state
+        if integration_method == 'euler':
+            integration_f = euler
+        else if integration_method == 'heun':
+            integration_f = heun
+        else:
+            raise Exception(f'Integration method {integration_method} not implemented.')
+        exc_new, inh_new, exc_ou, inh_ou = integration_f(state)
 
         return (
             (

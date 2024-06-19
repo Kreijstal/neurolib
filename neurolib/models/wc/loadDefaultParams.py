@@ -81,4 +81,6 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     params.exc_ou = np.zeros((params.N,))
     params.inh_ou = np.zeros((params.N,))
 
+    params.integration_method = 'euler'
+
     return params

@@ -26,6 +26,7 @@ class TestWC_jax(unittest.TestCase):
         model_jax = WCModel_jax(seed=0)
         model_jax.params["duration"] = 1.0 * 1000
         model_jax.params["sigma_ou"] = 0.0
+        model_jax.params['integration_method'] = 'euler'
 
         model_jax.run()
 
@@ -48,6 +49,7 @@ class TestWC_jax(unittest.TestCase):
         model_jax = WCModel_jax()
         model_jax.params["duration"] = 5.0 * 1000
         model_jax.params["sigma_ou"] = 0.01
+        model_jax.params['integration_method'] = 'euler'
 
         model_jax.run()
 
@@ -86,6 +88,7 @@ class TestWC_jax(unittest.TestCase):
         model.params["duration"] = 10 * 1000
         model.params["sigma_ou"] = 0.0
         model.params["K_gl"] = 0.6
+        model_jax.params['integration_method'] = 'euler'
 
         # local node input parameter
         model.params["exc_ext"] = 0.72
