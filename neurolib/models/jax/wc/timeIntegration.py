@@ -140,7 +140,7 @@ def timeIntegration_args(params):
     )
 
 
-@partial(jit, static_argnames=["N"])
+@partial(jit, static_argnames=["N","integration_method"])
 def timeIntegration_elementwise(
     startind,
     t,

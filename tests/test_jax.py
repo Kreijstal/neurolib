@@ -14,7 +14,7 @@ class TestWC_jax(unittest.TestCase):
     Basic test for WC model in JAX.
     """
 
-    def test_single_node_deterministic(self):
+    def test_single_node_deterministic_euler(self):
         logging.info("\t > WC jax: Testing single node ...")
         start = time.time()
         model = WCModel(seed=0)
@@ -88,7 +88,7 @@ class TestWC_jax(unittest.TestCase):
         model.params["duration"] = 10 * 1000
         model.params["sigma_ou"] = 0.0
         model.params["K_gl"] = 0.6
-        model_jax.params['integration_method'] = 'euler'
+        model.params['integration_method'] = 'euler'
 
         # local node input parameter
         model.params["exc_ext"] = 0.72
