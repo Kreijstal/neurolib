@@ -327,16 +327,13 @@ def get_update_step(
         inh_new = jnp.clip(inh_history[:, -1] + dt * inh_rhs, 0, 1)
 
         # Update Ornstein-Uhlenbeck process for noise
-        exc_ou = (
-            exc_ou + exc_ou_rhs
-        )  # mV/ms
-        inh_ou = (
-            inh_ou + inh_ou_rhs
-        )  # mV/ms
+        exc_ou = exc_ou + exc_ou_rhs  # mV/ms
+        inh_ou = inh_ou + inh_ou_rhs  # mV/ms
 
         return exc_new, inh_new, exc_ou, inh_ou
 
     def heun(state):
+        exc_history, inh_history, exc_ou, inh_ou, i = state
         exc_k1, inh_k1, exc_ou_rhs, inh_ou_rhs = step_rhs(state)
 
         # Update Ornstein-Uhlenbeck process for noise
@@ -353,8 +350,8 @@ def get_update_step(
         new_state = exc_k1_history, inh_k1_history, exc_ou, inh_ou, i
         exc_k2, inh_k2, _, _ = step_rhs(new_state)
 
-        exc_new = jnp.clip(exc_history[:, -1] + 0.5 * dt * (exc_k1 + exc_k2), 0, 1)
-        inh_new = jnp.clip(inh_history[:, -1] + 0.5 * dt * (inh_k1 + inh_k2), 0, 1)
+        exc_new = jnp.clip(exc_history[:, -1] +  dt * (exc_k1 + exc_k2)/2, 0, 1)
+        inh_new = jnp.clip(inh_history[:, -1] +  dt * (inh_k1 + inh_k2)/2, 0, 1)
         return exc_new, inh_new, exc_ou, inh_ou
 
     def update_step(state, _):
