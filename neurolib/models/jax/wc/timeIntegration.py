@@ -365,7 +365,7 @@ def get_update_step(
         exc_history, inh_history, exc_ou, inh_ou, i = state
         if integration_method == 'euler':
             integration_f = euler
-        else if integration_method == 'heun':
+        elif integration_method == 'heun':
             integration_f = heun
         else:
             raise Exception(f'Integration method {integration_method} not implemented.')
